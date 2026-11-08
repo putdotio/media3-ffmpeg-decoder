@@ -99,6 +99,7 @@ sub notice_tags {
 
 sub grant_of {
     my ($text) = @_;
+    return 'gpl' if $text =~ /terms\s+of\s+the\s+gnu\s+general\s+public\s+licen[sc]e/;
     return 'lgpl' if $text =~ /gnu (?:lesser|library) general public licen[sc]e/ || $text =~ /(?<![a-z])lgpl/;
     return 'gpl' if $text =~ /gnu general public licen[sc]e/ || $text =~ /(?<![a-z])gpl(?![a-z])/;
     return 'none';

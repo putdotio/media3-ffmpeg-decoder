@@ -156,6 +156,18 @@ record_compiled_object x86 libavutil/wrapped_gpl.o libavutil/wrapped_gpl.c
 expect_gate_failure "GPL source compiled into x86: libavutil/wrapped_gpl.c"
 
 reset_gate
+cat >"$gate/jni/ffmpeg/libavutil/mentions_lgpl.c" <<'SOURCE'
+/*
+ * This file is free software; you can redistribute it under the terms of
+ * the GNU General Public License as published by the Free Software Foundation.
+ */
+
+// Part of this file can also be used under the LGPL.
+SOURCE
+record_compiled_object x86 libavutil/mentions_lgpl.o libavutil/mentions_lgpl.c
+expect_gate_failure "GPL source compiled into x86: libavutil/mentions_lgpl.c"
+
+reset_gate
 record_compiled_object x86_64 libavcodec/absent.o libavcodec/absent.c
 expect_gate_failure "source libavcodec/absent.c is not in the tree"
 

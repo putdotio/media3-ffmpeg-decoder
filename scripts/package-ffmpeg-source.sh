@@ -64,7 +64,7 @@ Relink libffmpegJNI.so for $abi with the NDK toolchain:
     -std=c++11 -O2 -fPIC -shared -fvisibility=hidden -fvisibility-inlines-hidden \
     -Ijni/ffmpeg jni/ffmpeg_jni.cc -o "relink/$abi/libffmpegJNI.so" \
     "-Ljni/ffmpeg/android-libs/$abi" -lswresample -lavcodec -lavutil -landroid -llog \
-    -Wl,--no-undefined -Wl,-z,max-page-size=16384 $extra
+    -static-libstdc++ -Wl,--no-undefined -Wl,-z,max-page-size=16384 $extra
 
 Delete VERSION only after the FFmpeg build: FFmpeg reads it, and on a
 case-insensitive file system it shadows the C++ <version> header.
