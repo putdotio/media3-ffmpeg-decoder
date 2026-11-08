@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>putdotio/.github:renovate-config"],
+  "git-submodules": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["git-submodules"],
+      "matchDepNames": ["media"],
+      "versioning": "semver"
+    },
+    {
+      "matchManagers": ["git-submodules"],
+      "matchDepNames": ["ffmpeg"],
+      "versioning": "regex:^n(?<major>7)\\.(?<minor>1)\\.(?<patch>\\d+)$"
+    }
+  ]
+}

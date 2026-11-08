@@ -1,0 +1,24 @@
+media3-ffmpeg-decoder
+Copyright (c) put.io
+
+This project is licensed under the Apache License, Version 2.0. See LICENSE.
+
+The AAR published by this project bundles FFmpeg libraries (libavcodec,
+libavutil and libswresample) linked into libffmpegJNI. FFmpeg is licensed under
+the GNU Lesser General Public License, version 2.1 or later. FFmpeg is built
+without --enable-gpl, --enable-nonfree and --enable-version3.
+
+Source and build instructions for FFmpeg in a released AAR:
+
+- FFmpeg source: the ffmpeg submodule of this repository at the release tag,
+  https://github.com/putdotio/media3-ffmpeg-decoder/tags
+- Configure flags: libraries/decoder_ffmpeg/src/main/jni/build_ffmpeg.sh in the
+  media submodule, with the ffmpegDecoders list in gradle.properties.
+- Every AAR carries META-INF/media3-ffmpeg-decoder/ffmpeg-build.txt with the
+  exact FFmpeg commit, build script and configure string, and the LGPL text in
+  META-INF/media3-ffmpeg-decoder/COPYING.LGPLv2.1.
+- To rebuild it, modified or not, follow the README. The JNI wrapper is
+  Apache-2.0 source in the media submodule.
+
+The JNI wrapper and Java classes are built from AndroidX Media3, Copyright
+The Android Open Source Project, licensed under the Apache License, Version 2.0.
