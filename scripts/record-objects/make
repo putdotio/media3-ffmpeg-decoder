@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == clean ]]; then
+  abi="$(sed -n 's#^LIBDIR=.*android-libs/##p' ffbuild/config.mak)"
+  [[ -n "$abi" ]] || { echo "record-objects: no ABI in ffbuild/config.mak" >&2; exit 1; }
+  record_dir="$FFMPEG_OBJECTS_DIR/$abi"
+  mkdir -p "$record_dir"
+  while IFS= read -r object; do
+    depfile="${object%.o}.d"
+    [[ -f "$depfile" ]] || { echo "record-objects: $object has no $depfile" >&2; exit 1; }
+    mkdir -p "$record_dir/$(dirname "$object")"
+    cp "$depfile" "$record_dir/$depfile"
+  done < <(find . -name '*.o' | sed 's#^\./##')
+fi
+exec "$FFMPEG_REAL_MAKE" "$@"

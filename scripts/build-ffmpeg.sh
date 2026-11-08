@@ -15,36 +15,47 @@ case "$(uname -s)" in
   *) echo "unsupported host: $(uname -s)" >&2; exit 1 ;;
 esac
 
-upstream_jni="$repo_root/media/libraries/decoder_ffmpeg/src/main/jni"
 build_log="$module_dir/build.log"
 
 rm -rf "$module_dir"
-mkdir -p "$module_dir/jni/ffmpeg"
-cp "$upstream_jni/build_ffmpeg.sh" "$upstream_jni/CMakeLists.txt" "$upstream_jni/ffmpeg_jni.cc" "$module_dir/jni/"
-git -C "$repo_root/ffmpeg" archive HEAD | tar -x -C "$module_dir/jni/ffmpeg"
+"$repo_root/scripts/stage-ffmpeg-source.sh" "$module_dir"
 
-if ! "$module_dir/jni/build_ffmpeg.sh" "$module_dir" "$ndk_path" "$host_platform" "$min_sdk" "${decoders[@]}" >"$build_log" 2>&1; then
+objects_dir="$module_dir/compiled-objects"
+export FFMPEG_OBJECTS_DIR="$objects_dir"
+FFMPEG_REAL_MAKE="$(command -v make)"
+export FFMPEG_REAL_MAKE
+if ! PATH="$repo_root/scripts/record-objects:$PATH" "$module_dir/jni/build_ffmpeg.sh" "$module_dir" "$ndk_path" "$host_platform" "$min_sdk" "${decoders[@]}" >"$build_log" 2>&1; then
   tail -n 80 "$build_log" >&2
   exit 1
 fi
+"$repo_root/scripts/check-ffmpeg-licenses.sh" "$module_dir/jni/ffmpeg" "$objects_dir" "$repo_root/NOTICE" "$ndk_path" "$module_dir/compiled-licenses.txt"
+rm "$module_dir/jni/ffmpeg/VERSION"
 
 ffmpeg_commit="$(git -C "$repo_root/ffmpeg" rev-parse HEAD)"
 media3_commit="$(git -C "$repo_root/media" rev-parse HEAD)"
 ffmpeg_tag="$(git -C "$repo_root" config -f .gitmodules submodule.ffmpeg.branch)"
 media3_tag="$(git -C "$repo_root" config -f .gitmodules submodule.media.branch)"
-configuration="$(sed -n 's/^#define FFMPEG_CONFIGURATION "\(.*\)"$/\1/p' "$module_dir/jni/ffmpeg/config.h")"
+strings_tools=("$ndk_path"/toolchains/llvm/prebuilt/*/bin/llvm-strings)
+configurations=""
+for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+  archive_strings="$("${strings_tools[0]}" "$module_dir/jni/ffmpeg/android-libs/$abi/libavutil.a")"
+  configuration="$(awk -v prefix="--libdir=android-libs/$abi " 'index($0, prefix) == 1 { print; exit }' <<<"$archive_strings" | sed "s#$ndk_path#\$NDK#g")"
+  configurations+="${configurations:+$'\n'}Configuration $abi: $configuration"
+done
 
 license_dir="$resources_dir/META-INF/media3-ffmpeg-decoder"
 rm -rf "$license_dir"
 mkdir -p "$license_dir"
+cp "$repo_root/LICENSE" "$license_dir/LICENSE"
 cp "$repo_root/NOTICE" "$license_dir/NOTICE"
 cp "$repo_root/ffmpeg/COPYING.LGPLv2.1" "$license_dir/COPYING.LGPLv2.1"
+cp "$repo_root/ffmpeg/LICENSE.md" "$license_dir/FFMPEG-LICENSE.md"
 cat >"$license_dir/ffmpeg-build.txt" <<INFO
 FFmpeg tag: $ffmpeg_tag
-FFmpeg source: https://github.com/FFmpeg/FFmpeg/tree/$ffmpeg_commit
+FFmpeg source: https://github.com/FFmpeg/FFmpeg/tree/$ffmpeg_commit, with the changes listed in NOTICE
 Media3 tag: $media3_tag
 Build script: https://github.com/androidx/media/blob/$media3_commit/libraries/decoder_ffmpeg/src/main/jni/build_ffmpeg.sh
 Minimum SDK: $min_sdk
 Decoders: ${decoders[*]}
-Configuration: $configuration
+$configurations
 INFO
