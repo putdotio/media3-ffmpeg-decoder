@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 aar="$1"
 ffmpeg_build_log="$2"
 ndk_path="$3"
@@ -43,14 +44,25 @@ if grep -qvE '^License: LGPL version 2\.1 or later$' <<<"$license_lines"; then
   fail "FFmpeg is not LGPL 2.1: $(sort -u <<<"$license_lines")"
 fi
 
+ffmpeg_tag="$(git -C "$repo_root" config -f .gitmodules submodule.ffmpeg.branch)"
+ffmpeg_release="$(<"$ffmpeg_dir/RELEASE")"
+[[ "$ffmpeg_release" == "${ffmpeg_tag#n}" ]] ||
+  fail "FFmpeg RELEASE $ffmpeg_release does not match .gitmodules tag $ffmpeg_tag"
+
 classes_listing="$(unzip -l "$work_dir/classes.jar")"
 for entry in \
   androidx/media3/decoder/ffmpeg/FfmpegAudioRenderer.class \
   META-INF/media3-ffmpeg-decoder/LICENSE \
   META-INF/media3-ffmpeg-decoder/NOTICE \
   META-INF/media3-ffmpeg-decoder/COPYING.LGPLv2.1 \
+  META-INF/media3-ffmpeg-decoder/FFMPEG-LICENSE.md \
   META-INF/media3-ffmpeg-decoder/ffmpeg-build.txt; do
   grep -q "$entry" <<<"$classes_listing" || fail "classes.jar is missing $entry"
+done
+
+notice_text="$(unzip -p "$work_dir/classes.jar" META-INF/media3-ffmpeg-decoder/NOTICE)"
+for notice_mark in "libavutil/avsscanf.c" "libavutil/fixed_dsp.c" "Rich Felker" "MIPS Technologies"; do
+  grep -qF "$notice_mark" <<<"$notice_text" || fail "NOTICE in the AAR is missing $notice_mark"
 done
 
 enabled_decoders="$(sed -n 's/^#define CONFIG_\(.*\)_DECODER 1$/\1/p' "$ffmpeg_dir/config_components.h" | tr '[:upper:]' '[:lower:]' | sort)"

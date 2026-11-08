@@ -92,6 +92,20 @@ val gitCommit = { path: String ->
 
 val ndkDirectoryPath = androidComponents.sdkComponents.ndkDirectory.map { it.asFile.path }
 
+val ffmpegLicenseInputs =
+    listOf(
+        "NOTICE",
+        "LICENSE",
+        "patches",
+        "scripts/stage-ffmpeg-source.sh",
+        "scripts/apply-ffmpeg-patch.sh",
+        "scripts/ffmpeg-gpl-files.sh",
+        "scripts/classify-license.pl",
+        "scripts/list-compiled-sources.pl",
+        "scripts/check-ffmpeg-licenses.sh",
+        "scripts/record-objects",
+    )
+
 val buildFfmpeg =
     tasks.register<RunScript>("buildFfmpeg") {
         group = "build"
@@ -100,7 +114,7 @@ val buildFfmpeg =
         inputs.property("ffmpegCommit", gitCommit("ffmpeg"))
         inputs.property("media3Commit", gitCommit("media"))
         inputs
-            .files("NOTICE", "LICENSE", "scripts/stage-ffmpeg-source.sh")
+            .files(ffmpegLicenseInputs)
             .withPathSensitivity(PathSensitivity.RELATIVE)
         outputs.dir(stagedModule)
         arguments.add(ndkDirectoryPath)
@@ -117,7 +131,7 @@ val packageFfmpegSource =
         inputs.property("ffmpegCommit", gitCommit("ffmpeg"))
         inputs.property("media3Commit", gitCommit("media"))
         inputs
-            .files("NOTICE", "LICENSE", "gradle.properties", "scripts/stage-ffmpeg-source.sh", "scripts/build-ffmpeg.sh")
+            .files(ffmpegLicenseInputs, "gradle.properties", "scripts/build-ffmpeg.sh")
             .withPathSensitivity(PathSensitivity.RELATIVE)
         outputs.file(ffmpegSourceArchive)
         arguments.add(ffmpegSourceArchive.map { it.asFile.path })
@@ -243,13 +257,9 @@ mavenPublishing {
 
         licenses {
             license {
-                name.set("Apache-2.0")
-                url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-            }
-            license {
-                name.set("LGPL-2.1-or-later")
-                url.set("https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt")
-                comments.set("The FFmpeg libraries statically linked into libffmpegJNI")
+                name.set("Apache-2.0 AND LGPL-2.1-or-later")
+                url.set("https://github.com/putdotio/media3-ffmpeg-decoder/blob/main/NOTICE")
+                comments.set("Apache-2.0 for the Java classes and JNI wrapper, LGPL-2.1-or-later for the FFmpeg libraries statically linked into libffmpegJNI")
             }
         }
 

@@ -20,10 +20,15 @@ build_log="$module_dir/build.log"
 rm -rf "$module_dir"
 "$repo_root/scripts/stage-ffmpeg-source.sh" "$module_dir"
 
-if ! "$module_dir/jni/build_ffmpeg.sh" "$module_dir" "$ndk_path" "$host_platform" "$min_sdk" "${decoders[@]}" >"$build_log" 2>&1; then
+objects_dir="$module_dir/compiled-objects"
+export FFMPEG_OBJECTS_DIR="$objects_dir"
+FFMPEG_REAL_MAKE="$(command -v make)"
+export FFMPEG_REAL_MAKE
+if ! PATH="$repo_root/scripts/record-objects:$PATH" "$module_dir/jni/build_ffmpeg.sh" "$module_dir" "$ndk_path" "$host_platform" "$min_sdk" "${decoders[@]}" >"$build_log" 2>&1; then
   tail -n 80 "$build_log" >&2
   exit 1
 fi
+"$repo_root/scripts/check-ffmpeg-licenses.sh" "$module_dir/jni/ffmpeg" "$objects_dir" "$repo_root/NOTICE" "$ndk_path" "$module_dir/compiled-licenses.txt"
 rm "$module_dir/jni/ffmpeg/VERSION"
 
 ffmpeg_commit="$(git -C "$repo_root/ffmpeg" rev-parse HEAD)"
@@ -44,9 +49,10 @@ mkdir -p "$license_dir"
 cp "$repo_root/LICENSE" "$license_dir/LICENSE"
 cp "$repo_root/NOTICE" "$license_dir/NOTICE"
 cp "$repo_root/ffmpeg/COPYING.LGPLv2.1" "$license_dir/COPYING.LGPLv2.1"
+cp "$repo_root/ffmpeg/LICENSE.md" "$license_dir/FFMPEG-LICENSE.md"
 cat >"$license_dir/ffmpeg-build.txt" <<INFO
 FFmpeg tag: $ffmpeg_tag
-FFmpeg source: https://github.com/FFmpeg/FFmpeg/tree/$ffmpeg_commit
+FFmpeg source: https://github.com/FFmpeg/FFmpeg/tree/$ffmpeg_commit, with the changes listed in NOTICE
 Media3 tag: $media3_tag
 Build script: https://github.com/androidx/media/blob/$media3_commit/libraries/decoder_ffmpeg/src/main/jni/build_ffmpeg.sh
 Minimum SDK: $min_sdk

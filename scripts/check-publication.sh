@@ -33,9 +33,8 @@ work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
 pom_text="$(<"$pom")"
-for license in Apache-2.0 LGPL-2.1-or-later; do
-  grep -qF "<name>$license</name>" <<<"$pom_text" || fail "POM is missing license $license"
-done
+[[ "$(grep -c '<license>' <<<"$pom_text")" -eq 1 ]] || fail "POM must declare exactly one combined license entry"
+grep -qF '<name>Apache-2.0 AND LGPL-2.1-or-later</name>' <<<"$pom_text" || fail "POM is missing the combined license name"
 grep -qF "<version>$version</version>" <<<"$pom_text" || fail "POM does not declare version $version"
 
 aar_listing="$(unzip -l "$aar")" || fail "$(basename "$aar") is not a zip"
@@ -55,6 +54,8 @@ for entry in \
   jni/ffmpeg/configure \
   jni/ffmpeg/COPYING.LGPLv2.1 \
   jni/ffmpeg/VERSION \
+  jni/ffmpeg/LICENSE.md \
+  patches/ffmpeg-lgpl-only.patch \
   jni/build_ffmpeg.sh \
   jni/CMakeLists.txt \
   jni/ffmpeg_jni.cc \
@@ -70,12 +71,24 @@ ffmpeg_tag="$(git -C "$repo_root" config -f .gitmodules submodule.ffmpeg.branch)
 [[ "$(<"$source_root/jni/ffmpeg/VERSION")" == "$ffmpeg_tag" ]] ||
   fail "ffmpeg-source VERSION does not name $ffmpeg_tag"
 
+for gpl_source in libavcodec/aarch64/ac3dsp_init_aarch64.c libavcodec/aarch64/ac3dsp_neon.S; do
+  [[ ! -e "$source_root/jni/ffmpeg/$gpl_source" ]] || fail "ffmpeg-source carries GPL file $gpl_source"
+done
+gpl_files="$("$repo_root/scripts/ffmpeg-gpl-files.sh" "$source_root/jni/ffmpeg")"
+[[ -z "$gpl_files" ]] || fail "ffmpeg-source carries GPL files: $gpl_files"
+
+cmp -s "$repo_root/patches/ffmpeg-lgpl-only.patch" "$source_root/patches/ffmpeg-lgpl-only.patch" ||
+  fail "ffmpeg-source patch differs from patches/ffmpeg-lgpl-only.patch"
+grep -q 'GNU General Public' "$source_root/patches/ffmpeg-lgpl-only.patch" &&
+  fail "ffmpeg-source patch carries GPL text"
+
 mkdir "$work_dir/pinned"
 git -C "$repo_root/ffmpeg" archive HEAD | tar -x -C "$work_dir/pinned"
+"$repo_root/scripts/apply-ffmpeg-patch.sh" "$work_dir/pinned"
 rm "$source_root/jni/ffmpeg/VERSION"
 diff -r "$work_dir/pinned" "$source_root/jni/ffmpeg" >"$work_dir/diff" || {
   head -n 5 "$work_dir/diff" >&2
-  fail "ffmpeg-source differs from the pinned FFmpeg commit"
+  fail "ffmpeg-source differs from the pinned FFmpeg plus the patch"
 }
 
 echo "check-publication: ok"
