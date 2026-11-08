@@ -6,6 +6,11 @@
   },
   "packageRules": [
     {
+      "description": "git-refs returns no release timestamps, so a release age would stall every submodule update",
+      "matchManagers": ["git-submodules"],
+      "minimumReleaseAge": null
+    },
+    {
       "matchManagers": ["git-submodules"],
       "matchDepNames": ["media"],
       "versioning": "semver"

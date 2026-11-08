@@ -15,6 +15,8 @@ val upstreamModule = layout.projectDirectory.dir("media/libraries/decoder_ffmpeg
 val stagedModule = layout.buildDirectory.dir("ffmpeg-module")
 val stagedCMakeLists = stagedModule.map { it.file("jni/CMakeLists.txt") }
 val ffmpegBuildLog = stagedModule.map { it.file("build.log") }
+val stagedFfmpeg = stagedModule.map { it.dir("jni/ffmpeg") }
+val ffmpegSourceArchive = layout.buildDirectory.file("ffmpeg-source/ffmpeg-source.tar.xz")
 
 group = "io.put"
 version = providers.gradleProperty("version").orNull?.takeUnless { it == "unspecified" } ?: "$media3Version-SNAPSHOT"
@@ -97,12 +99,28 @@ val buildFfmpeg =
         script = layout.projectDirectory.file("scripts/build-ffmpeg.sh")
         inputs.property("ffmpegCommit", gitCommit("ffmpeg"))
         inputs.property("media3Commit", gitCommit("media"))
-        inputs.file(layout.projectDirectory.file("NOTICE")).withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs
+            .files("NOTICE", "LICENSE", "scripts/stage-ffmpeg-source.sh")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
         outputs.dir(stagedModule)
         arguments.add(ndkDirectoryPath)
         arguments.add(ffmpegMinSdk.toString())
         arguments.add(stagedModule.map { it.asFile.path })
         arguments.addAll(ffmpegDecoders)
+    }
+
+val packageFfmpegSource =
+    tasks.register<RunScript>("packageFfmpegSource") {
+        group = "build"
+        description = "Packages the FFmpeg source, JNI wrapper and build scripts for LGPL distribution"
+        script = layout.projectDirectory.file("scripts/package-ffmpeg-source.sh")
+        inputs.property("ffmpegCommit", gitCommit("ffmpeg"))
+        inputs.property("media3Commit", gitCommit("media"))
+        inputs
+            .files("NOTICE", "LICENSE", "gradle.properties", "scripts/stage-ffmpeg-source.sh", "scripts/build-ffmpeg.sh")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+        outputs.file(ffmpegSourceArchive)
+        arguments.add(ffmpegSourceArchive.map { it.asFile.path })
     }
 
 androidComponents {
@@ -119,18 +137,60 @@ tasks.matching { it.name.startsWith("configureCMake") }.configureEach {
 val checkAar =
     tasks.register<RunScript>("checkAar") {
         group = "verification"
-        description = "Checks the AAR for 16 KB alignment, ABIs, FFmpeg's license and the renderer class"
+        description = "Checks the AAR for 16 KB alignment, ABIs, decoders, FFmpeg's license and the renderer class"
         dependsOn("assembleRelease")
+        outputs.upToDateWhen { false }
         script = layout.projectDirectory.file("scripts/check-aar.sh")
         arguments.add(layout.buildDirectory.file("outputs/aar/media3-ffmpeg-decoder-release.aar").map { it.asFile.path })
         arguments.add(ffmpegBuildLog.map { it.asFile.path })
         arguments.add(ndkDirectoryPath)
+        arguments.add(stagedFfmpeg.map { it.asFile.path })
+    }
+
+val publicationSigning = if (providers.gradleProperty("signingInMemoryKey").isPresent) "signed" else "unsigned"
+val publishedVersionDirectory =
+    version.toString().let { publishedVersion ->
+        providers
+            .systemProperty("maven.repo.local")
+            .orElse(providers.systemProperty("user.home").map { "$it/.m2/repository" })
+            .map { "$it/io/put/media3-ffmpeg-decoder/$publishedVersion" }
+    }
+
+val checkPublication =
+    tasks.register<RunScript>("checkPublication") {
+        group = "verification"
+        description = "Checks the publication in Maven Local for everything Maven Central and the LGPL require"
+        dependsOn("publishToMavenLocal")
+        outputs.upToDateWhen { false }
+        script = layout.projectDirectory.file("scripts/check-publication.sh")
+        arguments.add(publishedVersionDirectory)
+        arguments.add(version.toString())
+        arguments.add(publicationSigning)
+    }
+
+val checkNegativeControls =
+    tasks.register<RunScript>("checkNegativeControls") {
+        group = "verification"
+        description = "Proves the AAR and publication checks fail on broken input"
+        dependsOn(checkAar, checkPublication)
+        outputs.upToDateWhen { false }
+        script = layout.projectDirectory.file("scripts/check-negative-controls.sh")
+        inputs
+            .files("scripts/check-aar.sh", "scripts/check-publication.sh")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+        arguments.add(layout.buildDirectory.file("outputs/aar/media3-ffmpeg-decoder-release.aar").map { it.asFile.path })
+        arguments.add(ffmpegBuildLog.map { it.asFile.path })
+        arguments.add(ndkDirectoryPath)
+        arguments.add(stagedFfmpeg.map { it.asFile.path })
+        arguments.add(publishedVersionDirectory)
+        arguments.add(version.toString())
+        arguments.add(publicationSigning)
     }
 
 tasks.register("verify") {
     group = "verification"
-    description = "Builds the AAR and enforces the release checks"
-    dependsOn(checkAar)
+    description = "Builds the AAR, publishes to Maven Local and enforces the release checks"
+    dependsOn(checkAar, checkPublication, checkNegativeControls)
 }
 
 dependencies {
@@ -147,6 +207,16 @@ tasks.matching { it.name.startsWith("publish") && !it.name.endsWith("ToMavenLoca
     doFirst {
         check(releaseVersionPattern.matches(publishVersion)) {
             "Remote publishing needs -Pversion=<media3 version>+<build>, got $publishVersion"
+        }
+    }
+}
+
+publishing {
+    publications.withType<MavenPublication>().configureEach {
+        artifact(ffmpegSourceArchive) {
+            builtBy(packageFfmpegSource)
+            classifier = "ffmpeg-source"
+            extension = "tar.xz"
         }
     }
 }
@@ -175,6 +245,11 @@ mavenPublishing {
             license {
                 name.set("Apache-2.0")
                 url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+            }
+            license {
+                name.set("LGPL-2.1-or-later")
+                url.set("https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt")
+                comments.set("The FFmpeg libraries statically linked into libffmpegJNI")
             }
         }
 

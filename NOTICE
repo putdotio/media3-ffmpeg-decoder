@@ -4,21 +4,21 @@ Copyright (c) put.io
 This project is licensed under the Apache License, Version 2.0. See LICENSE.
 
 The AAR published by this project bundles FFmpeg libraries (libavcodec,
-libavutil and libswresample) linked into libffmpegJNI. FFmpeg is licensed under
-the GNU Lesser General Public License, version 2.1 or later. FFmpeg is built
-without --enable-gpl, --enable-nonfree and --enable-version3.
+libavutil and libswresample) linked into libffmpegJNI. FFmpeg is Copyright (c)
+2000-2026 the FFmpeg developers and is licensed under the GNU Lesser General
+Public License, version 2.1 or later. FFmpeg is built without --enable-gpl,
+--enable-nonfree and --enable-version3.
 
 Source and build instructions for FFmpeg in a released AAR:
 
-- FFmpeg source: the ffmpeg submodule of this repository at the release tag,
-  https://github.com/putdotio/media3-ffmpeg-decoder/tags
-- Configure flags: libraries/decoder_ffmpeg/src/main/jni/build_ffmpeg.sh in the
-  media submodule, with the ffmpegDecoders list in gradle.properties.
+- Every release publishes the corresponding source next to the AAR on Maven
+  Central, signed like the AAR. It has the classifier ffmpeg-source:
+  https://repo1.maven.org/maven2/io/put/media3-ffmpeg-decoder/<version>/media3-ffmpeg-decoder-<version>-ffmpeg-source.tar.xz
+- That archive holds the FFmpeg source at the pinned commit, the JNI wrapper
+  that links it, the build scripts, and BUILD.txt with the rebuild command.
 - Every AAR carries META-INF/media3-ffmpeg-decoder/ffmpeg-build.txt with the
-  exact FFmpeg commit, build script and configure string, and the LGPL text in
-  META-INF/media3-ffmpeg-decoder/COPYING.LGPLv2.1.
-- To rebuild it, modified or not, follow the README. The JNI wrapper is
-  Apache-2.0 source in the media submodule.
+  exact FFmpeg commit, build script and per-ABI configure lines, and the LGPL
+  text in META-INF/media3-ffmpeg-decoder/COPYING.LGPLv2.1.
 
 The JNI wrapper and Java classes are built from AndroidX Media3, Copyright
 The Android Open Source Project, licensed under the Apache License, Version 2.0.

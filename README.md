@@ -21,11 +21,18 @@ Needs Java 21, the NDK in `ndkVersion`, Linux x86_64 or macOS, and shallow submo
 
 ```bash
 git clone --recurse-submodules --shallow-submodules https://github.com/putdotio/media3-ffmpeg-decoder.git
+cd media3-ffmpeg-decoder
 ./gradlew verify
 ./gradlew publishToMavenLocal -Pversion=1.11.1+1
 ```
 
-`./gradlew verify` builds FFmpeg with Media3's own `build_ffmpeg.sh`, then [check-aar.sh](./scripts/check-aar.sh) fails the build on a non-LGPL FFmpeg, a 64-bit library not aligned to 16 KB, a missing ABI or a missing renderer class.
+`./gradlew verify` builds FFmpeg with Media3's own `build_ffmpeg.sh`, then publishes to Maven Local and fails the build on what a release must not ship:
+
+- [check-aar.sh](./scripts/check-aar.sh): a non-LGPL FFmpeg, a decoder outside the allowed set, a missing per-ABI configure line, a 64-bit library not aligned to 16 KB, a missing ABI or a missing renderer class.
+- [check-publication.sh](./scripts/check-publication.sh): a POM without both licenses, a missing sources or javadoc jar, or an `ffmpeg-source` archive that differs from the pinned FFmpeg.
+- [check-negative-controls.sh](./scripts/check-negative-controls.sh): proves both checks fail on broken input.
+
+CI runs [verify-release-shape.sh](./scripts/verify-release-shape.sh), which does the same with a release version and a throwaway signing key.
 
 ## Bump Media3
 
@@ -60,7 +67,7 @@ git tag 'v1.11.1+1'
 git push origin 'v1.11.1+1'
 ```
 
-Pushing a `v*` tag publishes the AAR, sources and POM, signed, from the [release job](./.github/workflows/ci.yml). The tag must be on `main`. The version must be the current Media3 version plus `+<build>`. Central rejects a re-upload, so never delete or re-push a tag: bump the build number instead.
+Pushing a `v*` tag publishes the AAR, sources, javadoc, `ffmpeg-source` archive and POM, signed, from the [release job](./.github/workflows/ci.yml). The tag must be on `main`. The version must be the current Media3 version plus `+<build>`. Central rejects a re-upload, so never delete or re-push a tag: bump the build number instead.
 
 The job reads `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `SIGNING_KEY_ID`, `SIGNING_KEY` and `SIGNING_PASSWORD` from the protected `release` environment.
 
@@ -68,4 +75,4 @@ The job reads `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `SIGNING_KEY_I
 
 This project is [Apache-2.0](./LICENSE), the license of Media3's module.
 
-The AAR bundles FFmpeg, which is LGPL-2.1-or-later. FFmpeg is built without `--enable-gpl`, `--enable-nonfree` and `--enable-version3`. Each AAR carries the exact FFmpeg commit, configure string and LGPL text under `META-INF/media3-ffmpeg-decoder/`, and the corresponding source is the `ffmpeg` submodule at the release tag. See [NOTICE](./NOTICE).
+The AAR bundles FFmpeg, which is LGPL-2.1-or-later. FFmpeg is built without `--enable-gpl`, `--enable-nonfree` and `--enable-version3`. Each AAR carries the exact FFmpeg commit, per-ABI configure lines and LGPL text under `META-INF/media3-ffmpeg-decoder/`. The corresponding source is published next to the AAR on Maven Central as `media3-ffmpeg-decoder-<version>-ffmpeg-source.tar.xz`: the pinned FFmpeg tree, the JNI wrapper, the build scripts and a `BUILD.txt` with the rebuild command. See [NOTICE](./NOTICE).
