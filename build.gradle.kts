@@ -4,7 +4,7 @@ import com.vanniktech.maven.publish.SourcesJar
 import javax.inject.Inject
 
 plugins {
-    id("com.android.library") version "9.5.1"
+    id("com.android.library") version "9.5.2"
     id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
