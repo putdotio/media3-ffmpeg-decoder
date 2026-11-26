@@ -26,7 +26,7 @@ for abi in "${abis[@]}"; do
   [[ -f "$work_dir/jni/$abi/libffmpegJNI.so" ]] || fail "missing libffmpegJNI.so for $abi"
 done
 
-for abi in arm64-v8a x86_64; do
+for abi in "${abis[@]}"; do
   for library in "$work_dir/jni/$abi"/*.so; do
     alignments="$("$readelf" -l -W "$library" | awk '$1 == "LOAD" { print $NF }')"
     [[ -n "$alignments" ]] || fail "no LOAD segments in $abi/$(basename "$library")"

@@ -9,6 +9,7 @@ ffmpeg_tag="$(git -C "$repo_root" config -f .gitmodules submodule.ffmpeg.branch)
 
 mkdir -p "$module_dir/jni/ffmpeg"
 cp "$upstream_jni/build_ffmpeg.sh" "$upstream_jni/CMakeLists.txt" "$upstream_jni/ffmpeg_jni.cc" "$module_dir/jni/"
+printf '%s\n' 'target_link_options(ffmpegJNI PRIVATE "-Wl,-z,max-page-size=16384")' >>"$module_dir/jni/CMakeLists.txt"
 git -C "$repo_root/ffmpeg" archive HEAD | tar -x -C "$module_dir/jni/ffmpeg"
 "$repo_root/scripts/apply-ffmpeg-patch.sh" "$module_dir/jni/ffmpeg"
 printf '%s\n' "$ffmpeg_tag" >"$module_dir/jni/ffmpeg/VERSION"

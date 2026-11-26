@@ -13,7 +13,7 @@ The version is `<media3 version>+<build>`. It exposes Media3's `FfmpegAudioRende
 | Decoders | `ffmpegDecoders` in [gradle.properties](./gradle.properties) |
 | ABIs | arm64-v8a, armeabi-v7a, x86_64, x86 |
 | Min SDK | `ffmpegMinSdk` in [gradle.properties](./gradle.properties) |
-| 16 KB pages | 64-bit libraries are aligned to 16 KB |
+| 16 KB pages | Every library is aligned to 16 KB |
 
 ## Build
 
@@ -29,7 +29,7 @@ cd media3-ffmpeg-decoder
 `./gradlew verify` builds FFmpeg with Media3's own `build_ffmpeg.sh`, then publishes to Maven Local and fails the build on what a release must not ship:
 
 - [check-ffmpeg-licenses.sh](./scripts/check-ffmpeg-licenses.sh): any GPL source compiled into any ABI, from the objects each ABI actually built, or a compiled non-LGPL notice missing from [NOTICE](./NOTICE). Runs during `buildFfmpeg`.
-- [check-aar.sh](./scripts/check-aar.sh): a non-LGPL FFmpeg, a decoder outside the allowed set, a missing per-ABI configure line, a 64-bit library not aligned to 16 KB, a missing ABI, a missing renderer class, a missing notice file, or a `RELEASE` that disagrees with the pinned tag.
+- [check-aar.sh](./scripts/check-aar.sh): a non-LGPL FFmpeg, a decoder outside the allowed set, a missing per-ABI configure line, a library not aligned to 16 KB, a missing ABI, a missing renderer class, a missing notice file, or a `RELEASE` that disagrees with the pinned tag.
 - [check-publication.sh](./scripts/check-publication.sh): a POM without the single combined license entry, a missing sources or javadoc jar, an `ffmpeg-source` archive that differs from the pinned FFmpeg plus [patches/ffmpeg-lgpl-only.patch](./patches/ffmpeg-lgpl-only.patch), or a GPL file in that archive.
 - [check-negative-controls.sh](./scripts/check-negative-controls.sh): proves each check fails on broken input.
 
